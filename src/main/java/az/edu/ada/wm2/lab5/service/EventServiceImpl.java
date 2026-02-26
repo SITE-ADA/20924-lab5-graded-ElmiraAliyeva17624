@@ -85,27 +85,39 @@ public class EventServiceImpl implements EventService {
     @Override
     public List<Event> getEventsByTag(String tag) {
         if (tag == null || tag.trim().isEmpty()) {
+            throw new IllegalArgumentException("Tag cannot be null or blank");
+        }
+
+        List<Event> all = eventRepository.findAll();
+        if (all == null || all.isEmpty()) {
             return List.of();
         }
 
         String normalizedTag = tag.trim().toLowerCase();
 
-        return eventRepository.findAll().stream()
-                .filter(event -> event != null && event.getTags() != null && !event.getTags().isEmpty())
-                .filter(event -> event.getTags().stream()
+        return all.stream()
+                .filter(e -> e != null && e.getTags() != null)
+                .filter(e -> e.getTags().stream()
                         .filter(t -> t != null && !t.trim().isEmpty())
                         .map(t -> t.trim().toLowerCase())
                         .anyMatch(t -> t.equals(normalizedTag)))
+                .sorted(Comparator.comparing(Event::getEventDateTime,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<Event> getUpcomingEvents() {
+        List<Event> all = eventRepository.findAll();
+        if (all == null || all.isEmpty()) {
+            return List.of();
+        }
+
         LocalDateTime now = LocalDateTime.now();
 
-        return eventRepository.findAll().stream()
-                .filter(event -> event != null && event.getEventDateTime() != null)
-                .filter(event -> !event.getEventDateTime().isBefore(now))
+        return all.stream()
+                .filter(e -> e != null && e.getEventDateTime() != null)
+                .filter(e -> e.getEventDateTime().isAfter(now))
                 .sorted(Comparator.comparing(Event::getEventDateTime))
                 .collect(Collectors.toList());
     }
@@ -113,35 +125,47 @@ public class EventServiceImpl implements EventService {
     @Override
     public List<Event> getEventsByPriceRange(BigDecimal minPrice, BigDecimal maxPrice) {
         if (minPrice == null || maxPrice == null) {
-            return List.of();
+            throw new IllegalArgumentException("minPrice and maxPrice cannot be null");
         }
         if (minPrice.compareTo(BigDecimal.ZERO) < 0 || maxPrice.compareTo(BigDecimal.ZERO) < 0) {
-            return List.of();
+            throw new IllegalArgumentException("Price cannot be negative");
         }
         if (minPrice.compareTo(maxPrice) > 0) {
+            throw new IllegalArgumentException("minPrice cannot be greater than maxPrice");
+        }
+
+        List<Event> all = eventRepository.findAll();
+        if (all == null || all.isEmpty()) {
             return List.of();
         }
 
-        return eventRepository.findAll().stream()
-                .filter(event -> event != null && event.getTicketPrice() != null)
-                .filter(event -> event.getTicketPrice().compareTo(minPrice) >= 0
-                        && event.getTicketPrice().compareTo(maxPrice) <= 0)
+        return all.stream()
+                .filter(e -> e != null && e.getTicketPrice() != null)
+                .filter(e -> e.getTicketPrice().compareTo(minPrice) >= 0
+                        && e.getTicketPrice().compareTo(maxPrice) <= 0)
+                .sorted(Comparator.comparing(Event::getTicketPrice)
+                        .thenComparing(Event::getEventDateTime, Comparator.nullsLast(Comparator.naturalOrder())))
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<Event> getEventsByDateRange(LocalDateTime start, LocalDateTime end) {
         if (start == null || end == null) {
-            return List.of();
+            throw new IllegalArgumentException("start and end cannot be null");
         }
         if (start.isAfter(end)) {
+            throw new IllegalArgumentException("start cannot be after end");
+        }
+
+        List<Event> all = eventRepository.findAll();
+        if (all == null || all.isEmpty()) {
             return List.of();
         }
 
-        return eventRepository.findAll().stream()
-                .filter(event -> event != null && event.getEventDateTime() != null)
-                .filter(event -> !event.getEventDateTime().isBefore(start)
-                        && !event.getEventDateTime().isAfter(end))
+        return all.stream()
+                .filter(e -> e != null && e.getEventDateTime() != null)
+
+                .filter(e -> !e.getEventDateTime().isBefore(start) && !e.getEventDateTime().isAfter(end))
                 .sorted(Comparator.comparing(Event::getEventDateTime))
                 .collect(Collectors.toList());
     }
@@ -149,13 +173,13 @@ public class EventServiceImpl implements EventService {
     @Override
     public Event updateEventPrice(UUID id, BigDecimal newPrice) {
         if (id == null) {
-            throw new RuntimeException("Event id cannot be null");
+            throw new IllegalArgumentException("Event id cannot be null");
         }
         if (newPrice == null) {
-            throw new RuntimeException("New price cannot be null");
+            throw new IllegalArgumentException("New price cannot be null");
         }
         if (newPrice.compareTo(BigDecimal.ZERO) < 0) {
-            throw new RuntimeException("New price cannot be negative");
+            throw new IllegalArgumentException("New price cannot be negative");
         }
 
         Event existingEvent = eventRepository.findById(id)
