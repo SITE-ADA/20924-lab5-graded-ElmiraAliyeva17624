@@ -91,9 +91,11 @@ public class EventServiceImpl implements EventService {
         String normalizedTag = tag.trim().toLowerCase();
 
         return eventRepository.findAll().stream()
-                .filter(event -> event != null && event.getTags() != null)
+                .filter(event -> event != null && event.getTags() != null && !event.getTags().isEmpty())
                 .filter(event -> event.getTags().stream()
-                        .anyMatch(t -> t != null && t.trim().toLowerCase().equals(normalizedTag)))
+                        .filter(t -> t != null && !t.trim().isEmpty())
+                        .map(t -> t.trim().toLowerCase())
+                        .anyMatch(t -> t.equals(normalizedTag)))
                 .collect(Collectors.toList());
     }
 
@@ -110,51 +112,36 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public List<Event> getEventsByPriceRange(BigDecimal minPrice, BigDecimal maxPrice) {
-        if (minPrice == null && maxPrice == null) {
-            return eventRepository.findAll();
+        if (minPrice == null || maxPrice == null) {
+            return List.of();
         }
-
-        BigDecimal min = (minPrice != null) ? minPrice : BigDecimal.ZERO;
-        BigDecimal max = (maxPrice != null) ? maxPrice : BigDecimal.valueOf(Long.MAX_VALUE);
-
-        if (min.compareTo(max) > 0) {
-            BigDecimal temp = min;
-            min = max;
-            max = temp;
+        if (minPrice.compareTo(BigDecimal.ZERO) < 0 || maxPrice.compareTo(BigDecimal.ZERO) < 0) {
+            return List.of();
         }
-
-        BigDecimal finalMin = min;
-        BigDecimal finalMax = max;
+        if (minPrice.compareTo(maxPrice) > 0) {
+            return List.of();
+        }
 
         return eventRepository.findAll().stream()
                 .filter(event -> event != null && event.getTicketPrice() != null)
-                .filter(event -> event.getTicketPrice().compareTo(finalMin) >= 0
-                        && event.getTicketPrice().compareTo(finalMax) <= 0)
+                .filter(event -> event.getTicketPrice().compareTo(minPrice) >= 0
+                        && event.getTicketPrice().compareTo(maxPrice) <= 0)
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<Event> getEventsByDateRange(LocalDateTime start, LocalDateTime end) {
-        if (start == null && end == null) {
-            return eventRepository.findAll();
+        if (start == null || end == null) {
+            return List.of();
         }
-
-        LocalDateTime from = (start != null) ? start : LocalDateTime.MIN;
-        LocalDateTime to = (end != null) ? end : LocalDateTime.MAX;
-
-        if (from.isAfter(to)) {
-            LocalDateTime temp = from;
-            from = to;
-            to = temp;
+        if (start.isAfter(end)) {
+            return List.of();
         }
-
-        LocalDateTime finalFrom = from;
-        LocalDateTime finalTo = to;
 
         return eventRepository.findAll().stream()
                 .filter(event -> event != null && event.getEventDateTime() != null)
-                .filter(event -> !event.getEventDateTime().isBefore(finalFrom)
-                        && !event.getEventDateTime().isAfter(finalTo))
+                .filter(event -> !event.getEventDateTime().isBefore(start)
+                        && !event.getEventDateTime().isAfter(end))
                 .sorted(Comparator.comparing(Event::getEventDateTime))
                 .collect(Collectors.toList());
     }
@@ -171,10 +158,10 @@ public class EventServiceImpl implements EventService {
             throw new RuntimeException("New price cannot be negative");
         }
 
-        Event event = eventRepository.findById(id)
+        Event existingEvent = eventRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
 
-        event.setTicketPrice(newPrice);
-        return eventRepository.save(event);
+        existingEvent.setTicketPrice(newPrice);
+        return eventRepository.save(existingEvent);
     }
 }
