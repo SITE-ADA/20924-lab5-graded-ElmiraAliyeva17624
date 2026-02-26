@@ -105,7 +105,7 @@ public class EventServiceImpl implements EventService {
 
         return eventRepository.findAll().stream()
                 .filter(event -> event != null && event.getEventDateTime() != null)
-                .filter(event -> !event.getEventDateTime().isBefore(now)) // >= now
+                .filter(event -> !event.getEventDateTime().isBefore(now))
                 .sorted(Comparator.comparing(Event::getEventDateTime))
                 .collect(Collectors.toList());
     }
