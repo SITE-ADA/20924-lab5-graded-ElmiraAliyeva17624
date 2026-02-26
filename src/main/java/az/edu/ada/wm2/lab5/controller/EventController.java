@@ -109,7 +109,7 @@ public class EventController {
             List<Event> result = eventService.getEventsByDateRange(s, e);
             return new ResponseEntity<>(result, HttpStatus.OK);
         } catch (Exception ex) {
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST); // empty body
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -122,7 +122,7 @@ public class EventController {
             List<Event> result = eventService.getEventsByPriceRange(min, max);
             return new ResponseEntity<>(result, HttpStatus.OK);
         } catch (Exception ex) {
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST); // empty body
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -131,8 +131,10 @@ public class EventController {
         try {
             List<Event> result = eventService.getEventsByTag(tag);
             return new ResponseEntity<>(result, HttpStatus.OK);
+        } catch (IllegalArgumentException ex) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         } catch (Exception ex) {
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR); // empty body
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -142,7 +144,7 @@ public class EventController {
             List<Event> result = eventService.getUpcomingEvents();
             return new ResponseEntity<>(result, HttpStatus.OK);
         } catch (Exception ex) {
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR); // empty body
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -154,6 +156,8 @@ public class EventController {
         try {
             Event updated = eventService.updateEventPrice(id, price);
             return new ResponseEntity<>(updated, HttpStatus.OK);
+        } catch (IllegalArgumentException badRequest) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         } catch (RuntimeException notFound) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         } catch (Exception ex) {
